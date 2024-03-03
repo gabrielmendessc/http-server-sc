@@ -1,71 +1,23 @@
 package gabrielmendessc.me.http.server.sc;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Set;
 import java.util.StringTokenizer;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        final Selector selector = Selector.open();
+        NIOHttpServer NIOHttpServer = new NIOHttpServer(8080);
+        NIOHttpServer.start();
 
-        final ServerSocketChannel serverSocket = ServerSocketChannel.open();
-        serverSocket.bind(new InetSocketAddress(8080));
-        serverSocket.configureBlocking(false);
-        serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-
-        while (true) {
-
-            selector.select();
-            Iterator<SelectionKey> selectionKeyIterator = selector.selectedKeys().iterator();
-            while (selectionKeyIterator.hasNext()) {
-
-                final SelectionKey selectionKey = selectionKeyIterator.next();
-                selectionKeyIterator.remove();
-
-                try {
-
-                    if (selectionKey.isValid()) {
-
-                        if (selectionKey.isAcceptable()) {
-
-                            accept(selectionKey);
-
-                        } else if (selectionKey.isWritable()) {
-
-                            write(selectionKey);
-
-                        } else if (selectionKey.isReadable()) {
-
-                            read(selectionKey);
-
-                        }
-
-                    }
-
-                } catch (Exception e) {
-                    System.out.printf("Error while handling channel '%s'.\nException: %s", selectionKey.channel(), e);
-                    System.out.println();
-                    e.printStackTrace();
-                    selectionKey.cancel();
-                    selectionKey.channel().close();
-                }
-
-            }
-
-        }
 
     }
 
@@ -93,7 +45,10 @@ public class Main {
         }
 
         byteBuffer.flip();
-        String requestRaw = new String(byteBuffer.array());
+        byte[] bytesRaw = new byte[data];
+        byteBuffer.get(bytesRaw);
+        String requestRaw = new String(bytesRaw);
+        System.out.println(requestRaw);
         StringTokenizer requestTokenizer = new StringTokenizer(requestRaw);
         HttpRequest httpRequest = new HttpRequest(requestTokenizer.nextToken().toUpperCase(), requestTokenizer.nextToken(), requestTokenizer.nextToken());
 
@@ -101,42 +56,6 @@ public class Main {
 
         selectionKey.attach(httpRequest);
         selectionKey.interestOps(SelectionKey.OP_WRITE);
-
-        /*BufferedReader buffReader = new BufferedReader(new InputStreamReader(client.getInputStream()));
-        StringBuilder requestBuilder = new StringBuilder();
-
-        String line;
-        while (!(line = buffReader.readLine()).isBlank()) {
-
-            requestBuilder.append(line).append("\r\n");
-
-        }
-
-        String request = requestBuilder.toString();
-        String[] requestLines = request.split("\r\n");
-        String[] requestHead = requestLines[0].split(" ");
-        String method = requestHead[0];
-        String path = requestHead[1];
-        String version = requestHead[2];
-        String host = requestLines[1].split(" ")[1];
-
-        List<String> headerList = new ArrayList<>();
-        for (int i = 2; i < requestLines.length; i++) {
-
-            headerList.add(requestLines[i]);
-
-        }
-
-        Path filePath = getFilePath(path);
-        if (Files.exists(filePath)) {
-
-            sendResponse(client, "200 OK", Files.probeContentType(filePath), Files.readAllBytes(filePath));
-
-            return;
-
-        }
-
-        sendResponse(client, "404 Not Found", "text/html", "<h1>Not found:(</h1>".getBytes());*/
 
     }
 
@@ -176,7 +95,7 @@ public class Main {
 
             resContent = Files.readAllBytes(resPath);
             conType = Files.probeContentType(resPath);
-            status = "200 - OK";
+            status = "200 OK";
 
         }
 
